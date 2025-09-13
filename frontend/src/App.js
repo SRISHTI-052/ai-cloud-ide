@@ -139,6 +139,11 @@ return (
         value={currentFileObj?.content || ""}
         onChange={handleEditorChange}
         theme="vs-dark"
+        options={{
+        automaticLayout: true,
+        minimap: { enabled: false },
+        renderValidationDecorations: "off",  // disables the red underlines
+  }}
       />
 
       <button onClick={getAISuggestion} className="btn">
