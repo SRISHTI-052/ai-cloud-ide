@@ -1,62 +1,56 @@
 .app {
   display: flex;
-  height: 100vh;
-  font-family: monospace;
-  background-color: #1e1e1e;
-  color: white;
+  height: 100vh; /* full viewport */
 }
 
-/* Sidebar */
-.sidebar {
-  width: 220px;
-  background-color: #252526;
-  padding: 10px;
-  border-right: 1px solid #333;
-}
-
-.sidebar h3 {
-  margin-top: 0;
-  font-size: 14px;
-  color: #ccc;
-}
-
-.sidebar ul {
-  list-style: none;
-  padding-left: 10px;
-}
-
-.sidebar li {
-  margin: 5px 0;
-  cursor: pointer;
-}
-
-/* Editor + content */
 .editor-container {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 10px;
+  background-color: #1e1e1e;
 }
 
-/* Button */
 .btn {
   margin-top: 10px;
-  padding: 8px 12px;
-  background: #007acc;
-  border: none;
+  padding: 6px 12px;
+  background-color: #007acc;
   color: white;
-  font-weight: bold;
+  border: none;
   border-radius: 3px;
   cursor: pointer;
-  align-self: flex-start;
 }
 
-/* Output panel */
-.output {
-  margin-top: 15px;
-  padding: 10px;
-  background: #1b1b1b;
-  border-top: 1px solid #333;
-  overflow-y: auto;
-  height: 20vh;
+.btn:hover {
+  background-color: #005a9e;
 }
+
+.output {
+  margin-top: 10px;
+  background-color: #252526;
+  color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.sidebar-wrapper {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+   position: relative;
+}
+
+/* Resizer styling */
+.resizer {
+  width: 5px;             /* how thick the draggable area is */
+  cursor: ew-resize;      /* horizontal resize cursor */
+  background-color: #444; /* visible color for dragging */
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
