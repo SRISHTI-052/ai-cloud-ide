@@ -1,0 +1,7 @@
+Complete guide
+
+Goal: Build a browser-based code editor (like a mini VS Code) that allows users to:
+Write code in JavaScript or Python.
+Get AI-generated suggestions for their code.
+Save/load code files from the cloud.
+Deploy the frontend and backend online.
