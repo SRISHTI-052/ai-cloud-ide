@@ -18,7 +18,7 @@ Designed for developers to write, edit, and improve code with AI assistance in a
 
 ## Demo
 
-![ai-powered-ide](docs/ai-powered-ide.drawio%20(1).png)
+![AI IDE Diagram](docs/ai-powered-ide.png)
 
 ---
 
