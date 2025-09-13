@@ -44,3 +44,47 @@ def ai_suggest(request: CodeRequest):
         # Log and return error
         print("❌ ERROR in ai_suggest:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+    
+file_store = {
+    "App.js": "// Sample App.js content",
+    "index.js": "// Sample index.js content"
+}
+
+class FileCreate(BaseModel):
+    filename: str
+    content: str = ""
+
+class FileUpdate(BaseModel):
+    content: str
+
+@app.get("/files")
+def list_files():
+    return list(file_store.keys())
+
+@app.get("/files/{filename}")
+def get_file(filename: str):
+    if filename not in file_store:
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"filename": filename, "content": file_store[filename]}
+
+@app.post("/files")
+def create_file(file: FileCreate):
+    if file.filename in file_store:
+        raise HTTPException(status_code=400, detail="File already exists")
+    file_store[file.filename] = file.content
+    return {"message": f"{file.filename} created"}
+
+@app.put("/files/{filename}")
+def update_file(filename: str, file: FileUpdate):
+    if filename not in file_store:
+        raise HTTPException(status_code=404, detail="File not found")
+    file_store[filename] = file.content
+    return {"message": f"{filename} updated"}
+
+@app.delete("/files/{filename}")
+def delete_file(filename: str):
+    if filename not in file_store:
+        raise HTTPException(status_code=404, detail="File not found")
+    del file_store[filename]
+    return {"message": f"{filename} deleted"}
+
