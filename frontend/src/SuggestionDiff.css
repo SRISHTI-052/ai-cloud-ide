@@ -1,0 +1,40 @@
+.suggestion-diff {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #007acc;
+}
+
+.suggestion-diff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background-color: #252526;
+  color: #ccc;
+  font-size: 13px;
+}
+
+.suggestion-diff-actions .btn {
+  margin-top: 0;
+  margin-left: 8px;
+}
+
+.accept-btn {
+  background-color: #2e7d32;
+}
+
+.accept-btn:hover {
+  background-color: #1b5e20;
+}
+
+.reject-btn {
+  background-color: #5a5a5a;
+}
+
+.reject-btn:hover {
+  background-color: #444;
+}
+
+.output .error {
+  color: #f48771;
+}

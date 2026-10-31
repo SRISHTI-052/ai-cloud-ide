@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import Editor from "@monaco-editor/react";
 import Sidebar from "./Sidebar"; 
 import Tabs from "./Tabs";
+import SuggestionDiff from "./SuggestionDiff";
 import "./App.css";
 
 const API_URL = "http://127.0.0.1:8000";
@@ -15,7 +16,11 @@ function App() {
   ]);
 
   const [currentFile, setCurrentFile] = useState("App.js");
-  const [suggestion, setSuggestion] = useState("");
+  // Pending AI suggestion awaiting Accept/Reject: { fileName, original, modified }.
+  // Tied to the file it was requested for, so switching files can't misapply it.
+  const [review, setReview] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState(200); // default width
 
   const currentFileObj = files.find((f) => f.name === currentFile);
@@ -31,25 +36,40 @@ function App() {
 
   // --- AI Suggestion ---
   const getAISuggestion = async () => {
+    if (!currentFileObj) return;
+    const fileName = currentFileObj.name;
+    const original = currentFileObj.content;
+    setAiLoading(true);
+    setAiError("");
     try {
       const response = await fetch(`${API_URL}/ai-suggest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: currentFileObj.content }),
+        body: JSON.stringify({ code: original }),
       });
       const data = await response.json();
-      setSuggestion(data.suggestion);
-
-      setFiles(
-        files.map((file) =>
-          file.name === currentFile ? { ...file, content: data.suggestion } : file
-        )
-      );
+      if (!response.ok) {
+        throw new Error(data.detail || `Request failed (${response.status})`);
+      }
+      setReview({ fileName, original, modified: data.suggestion });
     } catch (error) {
       console.error("Error fetching AI suggestion:", error);
-      alert("Failed to get AI suggestion");
+      setAiError(`Failed to get AI suggestion: ${error.message}`);
+    } finally {
+      setAiLoading(false);
     }
   };
+
+  const acceptSuggestion = () => {
+    setFiles((prev) =>
+      prev.map((file) =>
+        file.name === review.fileName ? { ...file, content: review.modified } : file
+      )
+    );
+    setReview(null);
+  };
+
+  const rejectSuggestion = () => setReview(null);
 
   // --- File selection ---
   const handleFileSelect = (fileName) => {
@@ -110,26 +130,44 @@ return (
         onTabSelect={handleFileSelect}
       />
 
-      <Editor
-        height="65vh"
-        defaultLanguage="javascript"
-        value={currentFileObj?.content || ""}
-        onChange={handleEditorChange}
-        theme="vs-dark"
-        options={{
-        automaticLayout: true,
-        minimap: { enabled: false },
-        renderValidationDecorations: "off",  // disables the red underlines
-  }}
-      />
+      {review ? (
+        <SuggestionDiff
+          fileName={review.fileName}
+          original={review.original}
+          modified={review.modified}
+          onAccept={acceptSuggestion}
+          onReject={rejectSuggestion}
+        />
+      ) : (
+        <Editor
+          height="65vh"
+          defaultLanguage="javascript"
+          value={currentFileObj?.content || ""}
+          onChange={handleEditorChange}
+          theme="vs-dark"
+          options={{
+            automaticLayout: true,
+            minimap: { enabled: false },
+            renderValidationDecorations: "off", // disables the red underlines
+          }}
+        />
+      )}
 
-      <button onClick={getAISuggestion} className="btn">
-        Get AI Suggestion
+      <button
+        onClick={getAISuggestion}
+        className="btn"
+        disabled={aiLoading || review !== null}
+      >
+        {aiLoading ? "Getting suggestion…" : "Get AI Suggestion"}
       </button>
 
       <div className="output">
         <h4>💡 AI Suggestion Output</h4>
-        <pre>{suggestion}</pre>
+        {aiError ? (
+          <pre className="error" role="alert">{aiError}</pre>
+        ) : (
+          <pre>{review ? "Review the suggestion above, then Accept or Reject." : ""}</pre>
+        )}
       </div>
     </div>
   </div>

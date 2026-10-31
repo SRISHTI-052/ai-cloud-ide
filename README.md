@@ -8,7 +8,7 @@ A browser-based, VS Code-inspired editor with AI code suggestions. React + Monac
 
 - Monaco editor with a dark VS Code-like theme
 - File explorer sidebar (resizable) with "New File", plus a tab strip
-- **Get AI Suggestion** sends the current file to the backend, which asks OpenAI to improve it; the result is shown in the output panel and replaces the file content
+- **Get AI Suggestion** sends the current file to the backend, which asks OpenAI to improve it; the result opens in a side-by-side diff (Monaco `DiffEditor`) where you **Accept** or **Reject** it
 - Backend file CRUD API (`/files`), currently stored in memory (lost on restart) and not yet used by the frontend
 - `GET /health` for health checks
 

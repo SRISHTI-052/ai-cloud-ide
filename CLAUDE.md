@@ -12,7 +12,7 @@ AI Cloud IDE: a browser-based, VS Code-style editor with AI code suggestions.
   - `GET/POST /files`, `GET/PUT/DELETE /files/{filename}` — file CRUD backed by an **in-memory dict** (`file_store`); data is lost on restart.
   - CORS allows `http://localhost:3000` only. Config from `backend/.env` via `python-dotenv`: `OPENAI_API_KEY`, `LLM_PROVIDER` (`openai` | `fake`), `LLM_MODEL` (default `gpt-4o-mini`).
 - `frontend/` — Create React App (`react-scripts` 5, React 19) with `@monaco-editor/react`.
-  - `src/App.js` — main layout, file state (held in React state, **not** synced with the backend `/files` API), AI suggestion button. The AI response currently **overwrites** the whole file.
+  - `src/App.js` — main layout, file state (held in React state, **not** synced with the backend `/files` API), AI suggestion button. AI responses open in `SuggestionDiff.js` (Monaco `DiffEditor`) and only change the file on Accept.
   - `src/Sidebar.js` — file explorer + "New File". `src/Tabs.js` — tab strip (supports an optional `onTabClose`, not wired up yet).
   - Backend URL is hardcoded as `http://127.0.0.1:8000` in `App.js`.
 - `docs/` — diagram and notes.
