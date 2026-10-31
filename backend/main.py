@@ -1,9 +1,9 @@
-import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from openai import OpenAI
+
+from llm import LLMProvider, ProviderConfigError, create_provider
 
 load_dotenv()
 app = FastAPI()
@@ -16,49 +16,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Built at startup so an unknown LLM_PROVIDER fails fast. Real clients connect lazily.
+llm_provider = create_provider()
+
+def get_llm() -> LLMProvider:
+    return llm_provider
+
 class CodeRequest(BaseModel):
     code: str
 
-_client = None
-
-def get_client():
-    """Create the OpenAI client on first use so the app can start without a key."""
-    global _client
-    if _client is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured")
-        _client = OpenAI(api_key=api_key)
-    return _client
-
 @app.get("/")
 def root():
-    return {"message": "AI Cloud IDE backend is running with GPT!"}
+    return {"message": "AI Cloud IDE backend is running!"}
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 @app.post("/ai-suggest")
-def ai_suggest(request: CodeRequest):
-    client = get_client()
+def ai_suggest(request: CodeRequest, llm: LLMProvider = Depends(get_llm)):
     try:
-        code = request.code
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  
-            messages=[
-                {"role": "system", "content": "You are an AI coding assistant."},
-                {"role": "user", "content": f"Improve this code:\n{code}"}
-            ],
-            max_tokens=150
+        suggestion = llm.complete(
+            "You are an AI coding assistant.",
+            f"Improve this code:\n{request.code}",
+            max_tokens=150,
         )
-        suggestion = response.choices[0].message.content
         return {"suggestion": suggestion}
+    except ProviderConfigError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        # Log and return error
-        print("❌ ERROR in ai_suggest:", str(e))
+        print("ERROR in ai_suggest:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 file_store = {
     "App.js": "// Sample App.js content",
     "index.js": "// Sample index.js content"
