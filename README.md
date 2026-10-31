@@ -10,6 +10,7 @@ A browser-based, VS Code-inspired editor with AI code suggestions. React + Monac
 - File explorer sidebar (resizable) with "New File"; files open in closable tabs
 - **Get AI Suggestion** sends the current file to the backend, which asks OpenAI to improve it; the result opens in a side-by-side diff (Monaco `DiffEditor`) where you **Accept** or **Reject** it
 - Files are stored in SQLite on the backend (`backend/data/ide.db`, override with `DB_PATH`) and auto-saved ~500 ms after you stop typing; tabs show ● unsaved / … saving
+- **AI actions on a selection**: highlight code and use the toolbar or right-click menu to **Explain** (shown in the output panel), **Fix** / **Refactor** (diff that replaces only the selection), or **Write Tests** (diff that creates a new test file such as `App.test.js` / `test_utils.py`)
 - `GET /health` for health checks
 
 ## Getting started
@@ -75,6 +76,7 @@ Tests never call OpenAI; they use `FakeProvider` and no API key is needed. CI ru
 | --- | --- | --- |
 | GET | `/health` | `{"status": "ok"}` |
 | POST | `/ai-suggest` | Body `{"code": str}` → `{"suggestion": str}`. Returns 503 if `OPENAI_API_KEY` is not set. |
+| POST | `/ai/action` | Body `{"action": "explain"\|"fix"\|"refactor"\|"write_tests", "code": str, "selection": str, "language"?: str, "filename"?: str}` → `{"result": str, "kind": "text"\|"code"}`. Invalid action or empty selection → 422. |
 | GET | `/files` | List file names |
 | GET/PUT/DELETE | `/files/{filename}` | Read, update (`{"content": str}`), delete a file |
 | POST | `/files` | Create a file (`{"filename": str, "content": str}`) |

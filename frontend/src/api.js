@@ -27,3 +27,7 @@ export const updateFile = (name, content) =>
 
 export const aiSuggest = (code) =>
   request("/ai-suggest", { method: "POST", body: JSON.stringify({ code }) });
+
+// payload: { action, code, selection, language?, filename? } -> { result, kind }
+export const aiAction = (payload) =>
+  request("/ai/action", { method: "POST", body: JSON.stringify(payload) });

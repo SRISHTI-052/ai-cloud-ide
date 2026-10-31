@@ -5,6 +5,8 @@ import debounce from "lodash.debounce";
 import Sidebar from "./Sidebar";
 import Tabs from "./Tabs";
 import SuggestionDiff from "./SuggestionDiff";
+import AiActions, { AI_ACTIONS } from "./AiActions";
+import { languageFor, testFileNameFor } from "./fileUtils";
 import * as api from "./api";
 import "./App.css";
 
@@ -17,11 +19,15 @@ function App() {
   const [currentFile, setCurrentFile] = useState(null);
   const [saveStatus, setSaveStatus] = useState({}); // name -> "unsaved" | "saving" | "error"
 
-  // Pending AI suggestion awaiting Accept/Reject: { fileName, original, modified }.
+  // Pending AI suggestion awaiting Accept/Reject: { fileName, original, modified, isNew? }.
   // Tied to the file it was requested for, so switching files can't misapply it.
+  // isNew: accepting creates `fileName` instead of updating it (used by Write Tests).
   const [review, setReview] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
+  const [explanation, setExplanation] = useState(null); // { fileName, text }
+  // Current editor selection as character offsets into the current file, or null.
+  const [selection, setSelection] = useState(null);
   const [sidebarWidth, setSidebarWidth] = useState(200); // default width
 
   const currentFileObj = files.find((f) => f.name === currentFile);
@@ -119,12 +125,87 @@ function App() {
     }
   };
 
-  const acceptSuggestion = () => {
-    updateContent(review.fileName, review.modified);
+  const acceptSuggestion = async () => {
+    const accepted = review;
     setReview(null);
+    if (!accepted.isNew) {
+      updateContent(accepted.fileName, accepted.modified);
+      return;
+    }
+    try {
+      await api.createFile(accepted.fileName, accepted.modified);
+      setFiles((prev) => [...prev, { name: accepted.fileName, content: accepted.modified }]);
+      openFile(accepted.fileName);
+    } catch (err) {
+      setError(`Failed to create ${accepted.fileName}: ${err.message}`);
+    }
   };
 
   const rejectSuggestion = () => setReview(null);
+
+  // --- Selection-aware AI actions ---
+  const runAction = async (action) => {
+    if (!currentFileObj || !selection) return;
+    const { name, content } = currentFileObj;
+    const { start, end } = selection;
+    setAiLoading(true);
+    setError("");
+    setExplanation(null);
+    try {
+      const data = await api.aiAction({
+        action,
+        code: content,
+        selection: content.slice(start, end),
+        language: languageFor(name),
+        filename: name,
+      });
+      if (data.kind === "text") {
+        setExplanation({ fileName: name, text: data.result });
+      } else if (action === "write_tests") {
+        const testName = testFileNameFor(name, files.map((f) => f.name));
+        setReview({ fileName: testName, original: "", modified: data.result, isNew: true });
+      } else {
+        // Replace only the selected range; the rest of the file is untouched.
+        const modified = content.slice(0, start) + data.result + content.slice(end);
+        setReview({ fileName: name, original: content, modified });
+      }
+    } catch (err) {
+      console.error(`Error running AI action ${action}:`, err);
+      setError(`AI action failed: ${err.message}`);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+  // Monaco context-menu actions are registered once per editor, so they call the latest runAction.
+  const runActionRef = useRef(runAction);
+  runActionRef.current = runAction;
+
+  const handleEditorMount = (editor) => {
+    editor.onDidChangeCursorSelection(() => {
+      const sel = editor.getSelection();
+      if (!sel || sel.isEmpty()) {
+        setSelection(null);
+        return;
+      }
+      const model = editor.getModel();
+      setSelection({
+        start: model.getOffsetAt(sel.getStartPosition()),
+        end: model.getOffsetAt(sel.getEndPosition()),
+      });
+    });
+    AI_ACTIONS.forEach(({ id, label }) =>
+      editor.addAction({
+        id: `ai.${id}`,
+        label: `AI: ${label}`,
+        contextMenuGroupId: "ai",
+        precondition: "editorHasSelection",
+        run: () => runActionRef.current(id),
+      })
+    );
+  };
+
+  // Offsets belong to one file's content; drop them when the file changes.
+  useEffect(() => setSelection(null), [currentFile]);
 
   // --- Tabs ---
   const openFile = (fileName) => {
@@ -224,6 +305,7 @@ return (
           path={currentFileObj.name}
           value={currentFileObj.content}
           onChange={handleEditorChange}
+          onMount={handleEditorMount}
           theme="vs-dark"
           options={{
             automaticLayout: true,
@@ -237,6 +319,12 @@ return (
         </div>
       )}
 
+      <AiActions
+        hasSelection={Boolean(currentFileObj && selection && !review)}
+        disabled={aiLoading}
+        onAction={runAction}
+      />
+
       <button
         onClick={getAISuggestion}
         className="btn"
@@ -249,8 +337,18 @@ return (
         <h4>💡 AI Suggestion Output</h4>
         {error ? (
           <pre className="error" role="alert">{error}</pre>
+        ) : review ? (
+          <pre>
+            {review.isNew
+              ? `Accept to create ${review.fileName}, or Reject.`
+              : "Review the suggestion above, then Accept or Reject."}
+          </pre>
+        ) : explanation ? (
+          <pre data-testid="explanation">
+            {`Explanation (${explanation.fileName}):\n\n${explanation.text}`}
+          </pre>
         ) : (
-          <pre>{review ? "Review the suggestion above, then Accept or Reject." : ""}</pre>
+          <pre />
         )}
       </div>
     </div>

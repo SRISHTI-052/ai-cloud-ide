@@ -1,0 +1,23 @@
+.ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  color: #aaa;
+  font-size: 12px;
+}
+
+.ai-actions-label {
+  margin-right: 4px;
+}
+
+.ai-actions .ai-action-btn {
+  margin-top: 0;
+  padding: 3px 10px;
+}
+
+.btn:disabled {
+  background-color: #3a3a3a;
+  color: #777;
+  cursor: default;
+}
