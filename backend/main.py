@@ -1,10 +1,12 @@
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ai_actions import RESULT_KIND, SYSTEM_PROMPT, Action, build_prompt
 from llm import LLMProvider, ProviderConfigError, create_provider
 from storage import FileExists, FileMissing, Storage, storage_from_env
 
@@ -50,6 +52,38 @@ def ai_suggest(request: CodeRequest, llm: LLMProvider = Depends(get_llm)):
     except Exception as e:
         print("ERROR in ai_suggest:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+class ActionRequest(BaseModel):
+    action: Action
+    code: str
+    selection: str
+    language: Optional[str] = None
+    filename: Optional[str] = None
+
+@app.post("/ai/action")
+def ai_action(request: ActionRequest, llm: LLMProvider = Depends(get_llm)):
+    if not request.selection.strip():
+        raise HTTPException(status_code=422, detail="selection must not be empty")
+    prompt = build_prompt(
+        request.action, request.code, request.selection, request.language, request.filename
+    )
+    try:
+        result = llm.complete(SYSTEM_PROMPT, prompt, max_tokens=1024)
+    except ProviderConfigError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        print("ERROR in ai_action:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"result": strip_code_fences(result), "kind": RESULT_KIND[request.action]}
+
+def strip_code_fences(text: str) -> str:
+    """Models sometimes wrap code in ``` fences despite instructions; remove a single outer pair."""
+    stripped = text.strip()
+    if stripped.startswith("```") and stripped.endswith("```") and stripped.count("```") == 2:
+        first_newline = stripped.find("\n")
+        if first_newline != -1:
+            return stripped[first_newline + 1 : -3].rstrip("\n")
+    return text
 
 _storage = None
 
