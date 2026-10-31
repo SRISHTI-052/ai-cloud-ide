@@ -1,98 +1,78 @@
 # AI-Powered Cloud IDE
 
-A cloud-based, VS Code-inspired IDE that integrates **AI-powered code suggestions** using **OpenAI GPT-5**.  
-Designed for developers to write, edit, and improve code with AI assistance in a seamless online environment.
-
----
-
-## Features
-
-- **Multiple File Support**: Manage, create, and switch between multiple files in your project.
-- **AI-Powered Suggestions**: Improve your code or get help from GPT-5 with a single click.
-- **Resizable Sidebar**: Drag the left sidebar to adjust the file explorer width.
-- **Modern VS Code-Like UI**: Monaco Editor with dark theme for a familiar coding experience.
-- **AI Output Panel**: View AI suggestions in a separate output panel.
-- **Lightweight FastAPI Backend**: Handles AI requests securely using OpenAI API.
-
----
-
-## Demo
+A browser-based, VS Code-inspired editor with AI code suggestions. React + Monaco on the frontend, FastAPI on the backend, OpenAI (`gpt-4o-mini`) for suggestions.
 
 ![AI IDE Diagram](docs/ai-powered-ide.png)
 
----
+## Features
 
-## Getting Started
+- Monaco editor with a dark VS Code-like theme
+- File explorer sidebar (resizable) with "New File", plus a tab strip
+- **Get AI Suggestion** sends the current file to the backend, which asks OpenAI to improve it; the result is shown in the output panel and replaces the file content
+- Backend file CRUD API (`/files`), currently stored in memory (lost on restart) and not yet used by the frontend
+- `GET /health` for health checks
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js & npm
-- Python 3.x
-- OpenAI API Key
+- Python 3.10+
+- Node.js 20 + npm
+- An OpenAI API key (only needed for AI suggestions; everything else runs without one)
 
-### Installation
+### Backend
 
-1. **Clone the repository**
-   ```bash
-    git clone <repo_url>
-    cd ai-cloud-ide
-2. **Install backend dependencies**
-    ```bash
-    cd backend
-    pip install -r requirements.txt
-3. **Create a .env file in backend/**
-   ```bash
-   OPENAI_API_KEY=your_openai_api_key
-4. **Start backend**
-   ```bash
-   uvicorn main:app --reload
-5. **Install frontend dependencies**
-   ```bash
-   cd frontend
-   npm install
-6. **Start frontend**
-    ```bash
-    npm start
-7. **Open the application in your browser:**
-    ```bash
-    http://localhost:3000
+```bash
+cd backend
+python -m venv .venv
+# Windows: .venv\Scripts\activate   macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env               # then set OPENAI_API_KEY in .env
+uvicorn main:app --reload          # http://127.0.0.1:8000
+```
 
-## How to Use
+### Frontend
 
-1. Navigate the **left sidebar** to open existing files or create new ones.
-2. Write code in the **editor**.
-3. Click **Get AI Suggestion** to improve or refactor your code.
-4. Suggestions appear in the **output panel** and overwrite the current file content.
-5. Resize the sidebar as needed for better workspace management.
-6. Manage multiple files seamlessly and switch between them using **tabs** (if implemented).
+```bash
+cd frontend
+npm ci
+npm start                          # http://localhost:3000
+```
 
-## Collaboration
+The frontend talks to the backend at `http://127.0.0.1:8000`.
 
-This project is open for contributions!
+## Running tests
 
-I am looking for collaborators to:
+```bash
+# backend
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest
 
-- Enhance AI suggestions (e.g., smarter code improvements)
-- Improve UI/UX for a more VS Code-like experience
-- Add new features like **diff view, version control, and collaborative editing**
+# frontend
+cd frontend
+CI=true npm test -- --watchAll=false
+CI=true npm run build
+```
 
-If you want to contribute, **fork the repo and submit a pull request**.
+Tests never call OpenAI; the client is mocked and no API key is needed. CI runs all of the above on every pull request.
 
----
+## API
 
-## Tech Stack
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | `{"status": "ok"}` |
+| POST | `/ai-suggest` | Body `{"code": str}` → `{"suggestion": str}`. Returns 503 if `OPENAI_API_KEY` is not set. |
+| GET | `/files` | List file names |
+| GET/PUT/DELETE | `/files/{filename}` | Read, update (`{"content": str}`), delete a file |
+| POST | `/files` | Create a file (`{"filename": str, "content": str}`) |
 
-- **Frontend**: React, Monaco Editor
-- **Backend**: FastAPI
-- **AI**: OpenAI GPT-5 API
-- **Styling**: CSS, Dark VS Code-inspired theme
+## Contributing
 
----
+Work is tracked as GitHub issues; see [CLAUDE.md](CLAUDE.md) for the conventions PRs should follow.
 
-## Security & Notes
+## Tech stack
 
-- All AI requests go through the backend for security.
-- The IDE requires a valid OpenAI API Key.
-- Currently, AI suggestions overwrite the file content (future versions may include a diff feature).
-
-
+- **Frontend**: React 19 (Create React App), `@monaco-editor/react`
+- **Backend**: FastAPI, Uvicorn
+- **AI**: OpenAI API (`gpt-4o-mini`)

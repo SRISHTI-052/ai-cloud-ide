@@ -19,15 +19,29 @@ app.add_middleware(
 class CodeRequest(BaseModel):
     code: str
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
+_client = None
+
+def get_client():
+    """Create the OpenAI client on first use so the app can start without a key."""
+    global _client
+    if _client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured")
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 @app.get("/")
 def root():
     return {"message": "AI Cloud IDE backend is running with GPT!"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.post("/ai-suggest")
 def ai_suggest(request: CodeRequest):
+    client = get_client()
     try:
         code = request.code
         response = client.chat.completions.create(

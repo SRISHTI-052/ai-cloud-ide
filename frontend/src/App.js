@@ -63,29 +63,6 @@ function App() {
     setCurrentFile(newFileName);
   };
 
-  // --- Sidebar resizing ---
-  let startX;
-  let startWidth;
-
-  const startResizing = (e) => {
-    startX = e.clientX;
-    startWidth = sidebarWidth;
-    document.addEventListener("mousemove", resize);
-    document.addEventListener("mouseup", stopResizing);
-  };
-
-  const resize = (e) => {
-    const newWidth = startWidth + (e.clientX - startX);
-    if (newWidth > 100 && newWidth < 500) {
-      setSidebarWidth(newWidth);
-    }
-  };
-
-  const stopResizing = () => {
-    document.removeEventListener("mousemove", resize);
-    document.removeEventListener("mouseup", stopResizing);
-  };
-
 return (
   <div style={{ display: "flex", height: "100vh" }}>
     {/* Sidebar + Resizer */}
