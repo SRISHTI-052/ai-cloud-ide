@@ -42,3 +42,16 @@ def test_delete_file(client):
 
 def test_delete_missing_file(client):
     assert client.delete("/files/nope.js").status_code == 404
+
+
+def test_files_persist_across_restart(client, storage):
+    client.post("/files", json={"filename": "keep.py", "content": "x = 1"})
+    client.put("/files/App.js", json={"content": "edited"})
+
+    # A new Storage on the same DB file simulates a server restart.
+    from storage import Storage
+
+    reopened = Storage(storage.db_path)
+    assert "keep.py" in reopened.list_files()
+    assert reopened.get_file("keep.py") == "x = 1"
+    assert reopened.get_file("App.js") == "edited"

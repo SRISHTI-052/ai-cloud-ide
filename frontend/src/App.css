@@ -54,3 +54,12 @@
   z-index: 10;
 }
 
+
+.editor-placeholder {
+  height: 65vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  background-color: #1e1e1e;
+}

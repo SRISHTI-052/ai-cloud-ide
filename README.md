@@ -7,9 +7,9 @@ A browser-based, VS Code-inspired editor with AI code suggestions. React + Monac
 ## Features
 
 - Monaco editor with a dark VS Code-like theme
-- File explorer sidebar (resizable) with "New File", plus a tab strip
+- File explorer sidebar (resizable) with "New File"; files open in closable tabs
 - **Get AI Suggestion** sends the current file to the backend, which asks OpenAI to improve it; the result opens in a side-by-side diff (Monaco `DiffEditor`) where you **Accept** or **Reject** it
-- Backend file CRUD API (`/files`), currently stored in memory (lost on restart) and not yet used by the frontend
+- Files are stored in SQLite on the backend (`backend/data/ide.db`, override with `DB_PATH`) and auto-saved ~500 ms after you stop typing; tabs show ● unsaved / … saving
 - `GET /health` for health checks
 
 ## Getting started
@@ -40,7 +40,7 @@ npm ci
 npm start                          # http://localhost:3000
 ```
 
-The frontend talks to the backend at `http://127.0.0.1:8000`.
+The frontend talks to the backend at `http://127.0.0.1:8000`; override with `REACT_APP_API_URL` (e.g. in `frontend/.env.local`).
 
 ### LLM configuration
 
@@ -49,6 +49,7 @@ The frontend talks to the backend at `http://127.0.0.1:8000`.
 | `LLM_PROVIDER` | `openai` | `openai`, or `fake` for deterministic offline replies |
 | `LLM_MODEL` | `gpt-4o-mini` | Model name passed to the provider |
 | `OPENAI_API_KEY` | — | Required for the `openai` provider |
+| `DB_PATH` | `backend/data/ide.db` | SQLite file for project files |
 
 Providers live in `backend/llm/` behind a small `LLMProvider` interface, so new ones can be added without touching the endpoints.
 

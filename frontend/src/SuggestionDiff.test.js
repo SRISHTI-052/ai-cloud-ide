@@ -1,12 +1,9 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import App from "./App";
+import { callsTo, mockBackend } from "./testUtils/mockBackend";
 
-function mockFetchOnce(body, ok = true, status = 200) {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok,
-    status,
-    json: () => Promise.resolve(body),
-  });
+function mockSuggestion(body, status = 200) {
+  return mockBackend({ ai: { "/ai-suggest": () => ({ status, body }) } });
 }
 
 afterEach(() => {
@@ -14,22 +11,21 @@ afterEach(() => {
 });
 
 async function requestSuggestion() {
+  await screen.findByTestId("editor");
   fireEvent.click(screen.getByRole("button", { name: /get ai suggestion/i }));
   return screen.findByTestId("diff-editor");
 }
 
 test("shows a diff and leaves the file unchanged until accepted", async () => {
-  mockFetchOnce({ suggestion: "// improved" });
+  const { fetchMock } = mockSuggestion({ suggestion: "// improved" });
   render(<App />);
 
   await requestSuggestion();
 
   expect(screen.getByTestId("diff-original")).toHaveTextContent("// App.js content");
   expect(screen.getByTestId("diff-modified")).toHaveTextContent("// improved");
-  expect(global.fetch).toHaveBeenCalledWith(
-    "http://127.0.0.1:8000/ai-suggest",
-    expect.objectContaining({ body: JSON.stringify({ code: "// App.js content" }) })
-  );
+  const [[, options]] = callsTo(fetchMock, "POST", "/ai-suggest");
+  expect(JSON.parse(options.body)).toEqual({ code: "// App.js content" });
 
   // Reject: diff closes, editor still has the original content.
   fireEvent.click(screen.getByRole("button", { name: /reject/i }));
@@ -38,7 +34,7 @@ test("shows a diff and leaves the file unchanged until accepted", async () => {
 });
 
 test("accept applies the suggestion to the file", async () => {
-  mockFetchOnce({ suggestion: "// improved" });
+  mockSuggestion({ suggestion: "// improved" });
   render(<App />);
 
   await requestSuggestion();
@@ -49,7 +45,7 @@ test("accept applies the suggestion to the file", async () => {
 });
 
 test("accept applies to the file the suggestion was requested for", async () => {
-  mockFetchOnce({ suggestion: "// improved" });
+  mockSuggestion({ suggestion: "// improved" });
   render(<App />);
 
   await requestSuggestion();
@@ -63,9 +59,10 @@ test("accept applies to the file the suggestion was requested for", async () => 
 });
 
 test("shows errors inline instead of alert", async () => {
-  mockFetchOnce({ detail: "OPENAI_API_KEY is not configured" }, false, 503);
+  mockSuggestion({ detail: "OPENAI_API_KEY is not configured" }, 503);
   render(<App />);
 
+  await screen.findByTestId("editor");
   fireEvent.click(screen.getByRole("button", { name: /get ai suggestion/i }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("OPENAI_API_KEY is not configured");
