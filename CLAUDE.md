@@ -7,7 +7,7 @@ Guidance for Claude agents working in this repo. Work arrives as GitHub issues l
 AI Cloud IDE: a browser-based, VS Code-style editor with AI code suggestions.
 
 - `backend/` — FastAPI app in a single file, `main.py`.
-  - `GET /` — status message.
+  - `GET /` — status message. `GET /health` — `{"status": "ok"}`.
   - `POST /ai-suggest` — body `{"code": str}`; calls OpenAI (`gpt-4o-mini`) via the `openai` SDK and returns `{"suggestion": str}`.
   - `GET/POST /files`, `GET/PUT/DELETE /files/{filename}` — file CRUD backed by an **in-memory dict** (`file_store`); data is lost on restart.
   - CORS allows `http://localhost:3000` only. Reads `OPENAI_API_KEY` from `backend/.env` via `python-dotenv`.
@@ -24,8 +24,8 @@ Backend (run from `backend/`):
 ```bash
 python -m venv .venv
 # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-pip install openai pytest httpx        # until requirements files are fixed (see Known issues)
+pip install -r requirements-dev.txt    # runtime deps + pytest/httpx
+cp .env.example .env                   # set OPENAI_API_KEY (only needed for real AI calls)
 uvicorn main:app --reload              # http://127.0.0.1:8000
 python -m pytest                       # tests
 ```
@@ -41,14 +41,10 @@ CI=true npm run build                  # production build; CI=true turns ESLint 
 
 CI (`.github/workflows/ci.yml`) runs backend `pytest` and frontend tests + build on every PR and on pushes to `main`. A PR is only mergeable when CI is green.
 
-## Known issues (as of repo setup)
+## Testing conventions
 
-- `openai` is imported but missing from `backend/requirements.txt`.
-- `main.py` builds the OpenAI client at import time and crashes if `OPENAI_API_KEY` is unset, so tests can't import it.
-- No backend tests exist; `frontend/src/App.test.js` is the CRA default ("learn react") and fails.
-- `CI=true npm run build` fails on an unused variable (`startResizing`) in `App.js`.
-
-These are tracked by the Foundation issue; don't fix them incidentally in unrelated PRs.
+- Backend tests live in `backend/tests/`; `conftest.py` removes `OPENAI_API_KEY`, resets the cached OpenAI client, and resets `file_store` before every test.
+- Frontend: `src/__mocks__/@monaco-editor/react.js` replaces `Editor`/`DiffEditor` with plain elements in Jest (Monaco can't run in jsdom). Mock `fetch` in tests.
 
 ## Rules
 
