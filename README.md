@@ -28,6 +28,7 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate   macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env               # then set OPENAI_API_KEY in .env
+                                   # or LLM_PROVIDER=fake to run offline
 uvicorn main:app --reload          # http://127.0.0.1:8000
 ```
 
@@ -40,6 +41,16 @@ npm start                          # http://localhost:3000
 ```
 
 The frontend talks to the backend at `http://127.0.0.1:8000`.
+
+### LLM configuration
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LLM_PROVIDER` | `openai` | `openai`, or `fake` for deterministic offline replies |
+| `LLM_MODEL` | `gpt-4o-mini` | Model name passed to the provider |
+| `OPENAI_API_KEY` | — | Required for the `openai` provider |
+
+Providers live in `backend/llm/` behind a small `LLMProvider` interface, so new ones can be added without touching the endpoints.
 
 ## Running tests
 
@@ -55,7 +66,7 @@ CI=true npm test -- --watchAll=false
 CI=true npm run build
 ```
 
-Tests never call OpenAI; the client is mocked and no API key is needed. CI runs all of the above on every pull request.
+Tests never call OpenAI; they use `FakeProvider` and no API key is needed. CI runs all of the above on every pull request.
 
 ## API
 

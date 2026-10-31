@@ -6,11 +6,11 @@ Guidance for Claude agents working in this repo. Work arrives as GitHub issues l
 
 AI Cloud IDE: a browser-based, VS Code-style editor with AI code suggestions.
 
-- `backend/` — FastAPI app in a single file, `main.py`.
+- `backend/` — FastAPI app in `main.py`; LLM access goes through the `backend/llm/` package.
   - `GET /` — status message. `GET /health` — `{"status": "ok"}`.
-  - `POST /ai-suggest` — body `{"code": str}`; calls OpenAI (`gpt-4o-mini`) via the `openai` SDK and returns `{"suggestion": str}`.
+  - `POST /ai-suggest` — body `{"code": str}`; calls the configured `LLMProvider` (injected via the `get_llm` dependency) and returns `{"suggestion": str}`.
   - `GET/POST /files`, `GET/PUT/DELETE /files/{filename}` — file CRUD backed by an **in-memory dict** (`file_store`); data is lost on restart.
-  - CORS allows `http://localhost:3000` only. Reads `OPENAI_API_KEY` from `backend/.env` via `python-dotenv`.
+  - CORS allows `http://localhost:3000` only. Config from `backend/.env` via `python-dotenv`: `OPENAI_API_KEY`, `LLM_PROVIDER` (`openai` | `fake`), `LLM_MODEL` (default `gpt-4o-mini`).
 - `frontend/` — Create React App (`react-scripts` 5, React 19) with `@monaco-editor/react`.
   - `src/App.js` — main layout, file state (held in React state, **not** synced with the backend `/files` API), AI suggestion button. The AI response currently **overwrites** the whole file.
   - `src/Sidebar.js` — file explorer + "New File". `src/Tabs.js` — tab strip (supports an optional `onTabClose`, not wired up yet).
@@ -43,7 +43,8 @@ CI (`.github/workflows/ci.yml`) runs backend `pytest` and frontend tests + build
 
 ## Testing conventions
 
-- Backend tests live in `backend/tests/`; `conftest.py` removes `OPENAI_API_KEY`, resets the cached OpenAI client, and resets `file_store` before every test.
+- `backend/llm/`: `LLMProvider` (ABC with `complete(system, user, *, max_tokens=None) -> str`), `OpenAIProvider`, `FakeProvider`, and `create_provider()` (reads `LLM_PROVIDER`/`LLM_MODEL`). Never call the `openai` SDK directly from endpoints.
+- Backend tests live in `backend/tests/`; `conftest.py` strips API keys/provider env vars and resets `file_store` before every test. Use the `fake_llm` fixture (a `FakeProvider` injected via `app.dependency_overrides`) for any endpoint that uses the LLM.
 - Frontend: `src/__mocks__/@monaco-editor/react.js` replaces `Editor`/`DiffEditor` with plain elements in Jest (Monaco can't run in jsdom). Mock `fetch` in tests.
 
 ## Rules

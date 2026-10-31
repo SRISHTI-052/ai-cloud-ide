@@ -1,34 +1,21 @@
-from types import SimpleNamespace
-from unittest.mock import MagicMock
-
 import main
+from llm import OpenAIProvider
 
 
-def fake_openai_client(content=None, error=None):
-    fake = MagicMock()
-    if error:
-        fake.chat.completions.create.side_effect = error
-    else:
-        fake.chat.completions.create.return_value = SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
-        )
-    return fake
-
-
-def test_ai_suggest_returns_suggestion(client, monkeypatch):
-    fake = fake_openai_client(content="better code")
-    monkeypatch.setattr(main, "_client", fake)
+def test_ai_suggest_returns_suggestion(client, fake_llm):
+    fake_llm.response = "better code"
 
     res = client.post("/ai-suggest", json={"code": "x=1"})
 
     assert res.status_code == 200
     assert res.json() == {"suggestion": "better code"}
-    messages = fake.chat.completions.create.call_args.kwargs["messages"]
-    assert "x=1" in messages[-1]["content"]
+    assert len(fake_llm.calls) == 1
+    assert "x=1" in fake_llm.calls[0]["user"]
+    assert fake_llm.calls[0]["max_tokens"] == 150
 
 
-def test_ai_suggest_upstream_error_returns_500(client, monkeypatch):
-    monkeypatch.setattr(main, "_client", fake_openai_client(error=RuntimeError("boom")))
+def test_ai_suggest_provider_error_returns_500(client, fake_llm):
+    fake_llm.response = RuntimeError("boom")
 
     res = client.post("/ai-suggest", json={"code": "x=1"})
 
@@ -37,6 +24,9 @@ def test_ai_suggest_upstream_error_returns_500(client, monkeypatch):
 
 
 def test_ai_suggest_without_api_key_returns_503(client):
+    # Real OpenAIProvider with no key and no client: must fail before any network call.
+    main.app.dependency_overrides[main.get_llm] = lambda: OpenAIProvider(model="gpt-4o-mini")
+
     res = client.post("/ai-suggest", json={"code": "x=1"})
 
     assert res.status_code == 503
