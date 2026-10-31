@@ -32,3 +32,13 @@
 .close-btn:hover {
   color: red;
 }
+
+.tab-status {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #ccc;
+}
+
+.tab-status.error {
+  color: #f48771;
+}

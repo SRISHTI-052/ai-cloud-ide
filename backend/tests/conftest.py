@@ -3,8 +3,7 @@ from fastapi.testclient import TestClient
 
 import main
 from llm import FakeProvider
-
-INITIAL_FILES = dict(main.file_store)
+from storage import Storage
 
 
 @pytest.fixture(autouse=True)
@@ -18,12 +17,11 @@ def no_real_llm(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def reset_file_store():
-    main.file_store.clear()
-    main.file_store.update(INITIAL_FILES)
-    yield
-    main.file_store.clear()
-    main.file_store.update(INITIAL_FILES)
+def storage(tmp_path, monkeypatch):
+    """Every test gets a fresh SQLite DB in a temp dir; the real DB is never touched."""
+    store = Storage(tmp_path / "test.db")
+    monkeypatch.setattr(main, "_storage", store)
+    return store
 
 
 @pytest.fixture

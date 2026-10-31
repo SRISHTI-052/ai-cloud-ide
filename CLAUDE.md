@@ -9,12 +9,12 @@ AI Cloud IDE: a browser-based, VS Code-style editor with AI code suggestions.
 - `backend/` — FastAPI app in `main.py`; LLM access goes through the `backend/llm/` package.
   - `GET /` — status message. `GET /health` — `{"status": "ok"}`.
   - `POST /ai-suggest` — body `{"code": str}`; calls the configured `LLMProvider` (injected via the `get_llm` dependency) and returns `{"suggestion": str}`.
-  - `GET/POST /files`, `GET/PUT/DELETE /files/{filename}` — file CRUD backed by an **in-memory dict** (`file_store`); data is lost on restart.
+  - `GET/POST /files`, `GET/PUT/DELETE /files/{filename}` — file CRUD backed by SQLite (`backend/storage.py`, stdlib `sqlite3`, `projects` + `files` tables, single default project). DB path from `DB_PATH` (default `backend/data/ide.db`, gitignored). Injected via the `get_storage` dependency.
   - CORS allows `http://localhost:3000` only. Config from `backend/.env` via `python-dotenv`: `OPENAI_API_KEY`, `LLM_PROVIDER` (`openai` | `fake`), `LLM_MODEL` (default `gpt-4o-mini`).
 - `frontend/` — Create React App (`react-scripts` 5, React 19) with `@monaco-editor/react`.
-  - `src/App.js` — main layout, file state (held in React state, **not** synced with the backend `/files` API), AI suggestion button. AI responses open in `SuggestionDiff.js` (Monaco `DiffEditor`) and only change the file on Accept.
-  - `src/Sidebar.js` — file explorer + "New File". `src/Tabs.js` — tab strip (supports an optional `onTabClose`, not wired up yet).
-  - Backend URL is hardcoded as `http://127.0.0.1:8000` in `App.js`.
+  - `src/App.js` — main layout; loads files from `/files`, manages open tabs, debounced auto-save (`lodash.debounce`, `SAVE_DELAY_MS`), AI suggestion button. AI responses open in `SuggestionDiff.js` (Monaco `DiffEditor`) and only change the file on Accept.
+  - `src/Sidebar.js` — file explorer + "New File". `src/Tabs.js` — closable tabs with save-status indicator. `src/api.js` — all backend fetch calls.
+  - Backend URL: `REACT_APP_API_URL`, default `http://127.0.0.1:8000` (in `api.js`).
 - `docs/` — diagram and notes.
 
 ## Commands
@@ -44,8 +44,8 @@ CI (`.github/workflows/ci.yml`) runs backend `pytest` and frontend tests + build
 ## Testing conventions
 
 - `backend/llm/`: `LLMProvider` (ABC with `complete(system, user, *, max_tokens=None) -> str`), `OpenAIProvider`, `FakeProvider`, and `create_provider()` (reads `LLM_PROVIDER`/`LLM_MODEL`). Never call the `openai` SDK directly from endpoints.
-- Backend tests live in `backend/tests/`; `conftest.py` strips API keys/provider env vars and resets `file_store` before every test. Use the `fake_llm` fixture (a `FakeProvider` injected via `app.dependency_overrides`) for any endpoint that uses the LLM.
-- Frontend: `src/__mocks__/@monaco-editor/react.js` replaces `Editor`/`DiffEditor` with plain elements in Jest (Monaco can't run in jsdom). Mock `fetch` in tests.
+- Backend tests live in `backend/tests/`; `conftest.py` strips API keys/provider env vars and gives every test a fresh temp SQLite DB (`storage` fixture). Use the `fake_llm` fixture (a `FakeProvider` injected via `app.dependency_overrides`) for any endpoint that uses the LLM.
+- Frontend: `src/__mocks__/@monaco-editor/react.js` replaces `Editor`/`DiffEditor` with plain elements in Jest (Monaco can't run in jsdom). Mock the backend with `src/testUtils/mockBackend.js` (in-memory fake `fetch`; `callsTo()` to assert on requests).
 
 ## Rules
 
